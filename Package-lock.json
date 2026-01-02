@@ -1,0 +1,43 @@
+const express = require('express');
+const Gpio = require('onoff').Gpio; 
+const Lcd = require('lcd');         
+
+const app = express();
+app.use(express.json());
+const statusLed = new Gpio(17, 'out');
+const lcd = new Lcd({ rs: 12, e: 21, data: [5, 6, 13, 19], cols: 16, rows: 2 });
+
+lcd.on('ready', () => {
+    console.log("Terminal Display Online.");
+    lcd.setCursor(0, 0);
+    lcd.print('System Ready');
+});
+
+app.post('/api/attendance', (req, res) => {
+    const { studentName, status } = req.body;
+
+    if (status === 'present') 
+        statusLed.writeSync(1);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print('Welcome:');
+        lcd.setCursor(0, 1);
+        lcd.print(studentName);
+        setTimeout(() => {
+            statusLed.writeSync(0);
+            lcd.clear();
+            lcd.print('Scan ID...');
+        }, 3000);
+
+        return res.status(200).send(`Device: Logged ${studentName}`);
+    }
+    
+    res.status(400).send('Invalid data');
+});
+
+app.listen(3000, () => console.log('IoT Terminal listening on port 3000'));
+process.on('SIGINT', () => {
+    statusLed.unexport();
+    lcd.close();
+    process.exit();
+});
